@@ -10,7 +10,7 @@ const cors = require("cors");
 
 const app = express();
 app.use(cors({ origin: "http://localhost:5173" }));
-app.use(express.json({ limit: "10mb" }));
+app.use(express.json({ limit: '10mb' }));
 
 // Upstream endpoints
 const BASE_SGPA = "https://results.bput.ac.in/student-results-sgpa";
@@ -43,8 +43,7 @@ function appendJobLog(jobId, line) {
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const expandRange = (s, e) => {
   if (/^\d+$/.test(s) && /^\d+$/.test(e)) {
-    const a = Number(s),
-      b = Number(e);
+    const a = Number(s), b = Number(e);
     const out = [];
     for (let x = a; x <= b; x++) out.push(String(x).padStart(s.length, "0"));
     return out;
@@ -64,18 +63,13 @@ function randomDobBetweenYears(startYear = 2004, endYear = 2005) {
   return `${y}-${m}-${day}`;
 }
 
-async function fetchWithTimeoutAndRetries(
-  url,
-  { attempts = 3, timeoutMs = 15000, abortSignal = null } = {}
-) {
+async function fetchWithTimeoutAndRetries(url, { attempts = 3, timeoutMs = 15000, abortSignal = null } = {}) {
   let lastErr = null;
   for (let i = 0; i < attempts; i++) {
     const controller = new AbortController();
     const id = setTimeout(() => controller.abort(), timeoutMs);
     if (abortSignal) {
-      abortSignal.addEventListener("abort", () => controller.abort(), {
-        once: true,
-      });
+      abortSignal.addEventListener("abort", () => controller.abort(), { once: true });
     }
     try {
       const res = await fetch(url, {
@@ -83,8 +77,7 @@ async function fetchWithTimeoutAndRetries(
         signal: controller.signal,
         headers: {
           "Content-Type": "text/plain",
-          "User-Agent":
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
           Accept: "application/json, text/plain, */*",
         },
       });
@@ -104,30 +97,26 @@ async function fetchWithTimeoutAndRetries(
 }
 
 async function fetchAllForRoll(roll, semid, session, options) {
-  const sgpaUrl = `${BASE_SGPA}?rollNo=${encodeURIComponent(
-    roll
-  )}&semid=${encodeURIComponent(semid)}&session=${encodeURIComponent(session)}`;
-  const subsUrl = `${BASE_SUB}?semid=${encodeURIComponent(
-    semid
-  )}&rollNo=${encodeURIComponent(roll)}&session=${encodeURIComponent(session)}`;
+  const sgpaUrl = `${BASE_SGPA}?rollNo=${encodeURIComponent(roll)}&semid=${encodeURIComponent(semid)}&session=${encodeURIComponent(session)}`;
+  const subsUrl = `${BASE_SUB}?semid=${encodeURIComponent(semid)}&rollNo=${encodeURIComponent(roll)}&session=${encodeURIComponent(session)}`;
   const detUrl = `${BASE_DET}?rollNo=${encodeURIComponent(roll)}`;
 
   try {
     const [sgpa, subs, det] = await Promise.all([
-      fetchWithTimeoutAndRetries(sgpaUrl, {
-        attempts: options.perReqAttempts,
-        timeoutMs: options.perReqTimeout,
-        abortSignal: options.abortSignal,
+      fetchWithTimeoutAndRetries(sgpaUrl, { 
+        attempts: options.perReqAttempts, 
+        timeoutMs: options.perReqTimeout, 
+        abortSignal: options.abortSignal 
       }),
-      fetchWithTimeoutAndRetries(subsUrl, {
-        attempts: options.perReqAttempts,
-        timeoutMs: options.perReqTimeout,
-        abortSignal: options.abortSignal,
+      fetchWithTimeoutAndRetries(subsUrl, { 
+        attempts: options.perReqAttempts, 
+        timeoutMs: options.perReqTimeout, 
+        abortSignal: options.abortSignal 
       }),
-      fetchWithTimeoutAndRetries(detUrl, {
-        attempts: Math.max(1, Math.floor(options.perReqAttempts / 2)),
-        timeoutMs: Math.min(10000, options.perReqTimeout),
-        abortSignal: options.abortSignal,
+      fetchWithTimeoutAndRetries(detUrl, { 
+        attempts: Math.max(1, Math.floor(options.perReqAttempts / 2)), 
+        timeoutMs: Math.min(10000, options.perReqTimeout), 
+        abortSignal: options.abortSignal 
       }),
     ]);
     return { sgpa, subs, det };
@@ -139,33 +128,15 @@ async function fetchAllForRoll(roll, semid, session, options) {
 function normalizeStudent(roll, sgpaResp, subsResp, detResp, namesMap = {}) {
   const det = detResp ?? {};
   const nameFromDet = det.studentName ?? det.student_name ?? null;
-  const sgpa =
-    sgpaResp && typeof sgpaResp.sgpa !== "undefined"
-      ? Number(sgpaResp.sgpa)
-      : null;
-  const totalGradePoints =
-    typeof sgpaResp?.totalGradePoints !== "undefined"
-      ? Number(sgpaResp.totalGradePoints)
-      : null;
+  const sgpa = sgpaResp && (typeof sgpaResp.sgpa !== "undefined") ? Number(sgpaResp.sgpa) : null;
+  const totalGradePoints = typeof sgpaResp?.totalGradePoints !== "undefined" ? Number(sgpaResp.totalGradePoints) : null;
   const credits = sgpaResp?.cretits ?? null;
   const subjects = Array.isArray(subsResp) ? subsResp : [];
 
-  const name =
-    namesMap && namesMap[roll]
-      ? namesMap[roll]
-      : nameFromDet ?? `Student ${roll}`;
+  const name = (namesMap && namesMap[roll]) ? namesMap[roll] : (nameFromDet ?? `Student ${roll}`);
 
-  const dobFromDet =
-    det.dob ??
-    det.DOB ??
-    det.dateOfBirth ??
-    det.date_of_birth ??
-    det.birthDate ??
-    det.birthdate ??
-    null;
-  const dob = dobFromDet
-    ? formatDob(dobFromDet)
-    : randomDobBetweenYears(2004, 2005);
+  const dobFromDet = det.dob ?? det.DOB ?? det.dateOfBirth ?? det.date_of_birth ?? det.birthDate ?? det.birthdate ?? null;
+  const dob = dobFromDet ? formatDob(dobFromDet) : randomDobBetweenYears(2004, 2005);
 
   return {
     rollNo: roll,
@@ -211,10 +182,7 @@ async function startJob(jobId) {
   if (!job) throw new Error("job missing");
   const cfg = job.config;
 
-  appendJobLog(
-    jobId,
-    `Job start: ${job.rolls.length} rolls, sem=${job.semid}, session=${job.session}`
-  );
+  appendJobLog(jobId, `Job start: ${job.rolls.length} rolls, sem=${job.semid}, session=${job.session}`);
   job.state = "running";
   let consecutiveUpstreamErrors = 0;
 
@@ -234,16 +202,13 @@ async function startJob(jobId) {
       const s = job.statusMap[r];
       if (!s) return false;
       if (s.status === "success") return false;
-      if (cfg.perRollMaxRetries > 0 && s.attempts >= cfg.perRollMaxRetries)
-        return false;
+      if (cfg.perRollMaxRetries > 0 && s.attempts >= cfg.perRollMaxRetries) return false;
       if (!s.nextAttemptAt) return true;
       return s.nextAttemptAt <= now;
     });
 
     if (toTry.length === 0) {
-      const remaining = job.rolls.filter(
-        (r) => job.statusMap[r].status !== "success"
-      ).length;
+      const remaining = job.rolls.filter((r) => job.statusMap[r].status !== "success").length;
       if (remaining === 0) {
         appendJobLog(jobId, "All rolls succeeded - done");
         job.done = job.rolls.length;
@@ -254,10 +219,7 @@ async function startJob(jobId) {
         appendJobLog(jobId, `Max cycles reached (${cfg.maxCycles}) - stopping`);
         break;
       }
-      const backoff = Math.min(
-        cfg.cycleBackoffBase * Math.pow(2, Math.max(0, job.cycle - 1)),
-        cfg.maxCycleBackoff
-      );
+      const backoff = Math.min(cfg.cycleBackoffBase * Math.pow(2, Math.max(0, job.cycle - 1)), cfg.maxCycleBackoff);
       appendJobLog(jobId, `No eligible rolls now. Sleeping ${backoff}ms`);
       await sleep(backoff);
       continue;
@@ -267,8 +229,7 @@ async function startJob(jobId) {
     const promises = toTry.map((roll, idx) =>
       limiter(async () => {
         if (job.stopRequested) return;
-        if (idx !== 0 && cfg.interRequestDelay > 0)
-          await sleep(cfg.interRequestDelay);
+        if (idx !== 0 && cfg.interRequestDelay > 0) await sleep(cfg.interRequestDelay);
 
         const s = job.statusMap[roll];
         s.attempts++;
@@ -283,61 +244,38 @@ async function startJob(jobId) {
             abortSignal: null,
           });
 
-          const stud = normalizeStudent(
-            roll,
-            raw.sgpa,
-            raw.subs,
-            raw.det,
-            job.namesMap || {}
-          );
+          const stud = normalizeStudent(roll, raw.sgpa, raw.subs, raw.det, job.namesMap || {});
           s.student = stud;
           s.status = "success";
           s.lastErr = null;
           s.nextAttemptAt = null;
           appendJobLog(jobId, `Success ${roll} sgpa=${stud.sgpa ?? "N/A"}`);
           consecutiveUpstreamErrors = 0;
-          job.done = Object.values(job.statusMap).filter(
-            (x) => x.status === "success"
-          ).length;
-          job.percent =
-            job.total > 0 ? Math.round((job.done / job.total) * 100) : 0;
+          job.done = Object.values(job.statusMap).filter(x => x.status === "success").length;
+job.percent = job.total > 0 ? Math.round((job.done / job.total) * 100) : 0;
+
         } catch (err) {
           const errMsg = String(err?.message ?? err);
           s.lastErr = errMsg;
           s.status = "failed";
-          const isUpstreamError =
-            /AbortError|network|ECONNRESET|ECONNREFUSED|HTTP 5\d{2}|timed out/i.test(
-              errMsg
-            ) || /HTTP \d{3}/i.test(errMsg);
-          if (isUpstreamError) consecutiveUpstreamErrors++;
-          else consecutiveUpstreamErrors = 0;
-          const backoff = Math.min(
-            cfg.perRollBackoffBase * Math.pow(2, Math.max(0, s.attempts - 1)),
-            cfg.perRollMaxBackoff
-          );
+          const isUpstreamError = /AbortError|network|ECONNRESET|ECONNREFUSED|HTTP 5\d{2}|timed out/i.test(errMsg) || /HTTP \d{3}/i.test(errMsg);
+          if (isUpstreamError) consecutiveUpstreamErrors++; else consecutiveUpstreamErrors = 0;
+          const backoff = Math.min(cfg.perRollBackoffBase * Math.pow(2, Math.max(0, s.attempts - 1)), cfg.perRollMaxBackoff);
           const jitter = Math.floor(Math.random() * 500);
           s.nextAttemptAt = Date.now() + backoff + jitter;
-          appendJobLog(
-            jobId,
-            `Failed ${roll}: ${errMsg}. next in ${backoff + jitter}ms`
-          );
+          appendJobLog(jobId, `Failed ${roll}: ${errMsg}. next in ${backoff + jitter}ms`);
         }
       })
     );
 
     await Promise.all(promises);
 
-    job.done = Object.values(job.statusMap).filter(
-      (x) => x.status === "success"
-    ).length;
+    job.done = Object.values(job.statusMap).filter((x) => x.status === "success").length;
     job.percent = job.total > 0 ? Math.round((job.done / job.total) * 100) : 0;
 
     if (consecutiveUpstreamErrors >= cfg.universityDownThreshold) {
       job.universityDown = true;
-      appendJobLog(
-        jobId,
-        `UNIVERSITY_DOWN detected (consecutive errors=${consecutiveUpstreamErrors})`
-      );
+      appendJobLog(jobId, `UNIVERSITY_DOWN detected (consecutive errors=${consecutiveUpstreamErrors})`);
     } else {
       job.universityDown = false;
     }
@@ -351,50 +289,28 @@ async function startJob(jobId) {
       break;
     }
 
-    const backoff = Math.min(
-      cfg.cycleBackoffBase * Math.pow(2, Math.max(0, job.cycle - 1)),
-      cfg.maxCycleBackoff
-    );
+    const backoff = Math.min(cfg.cycleBackoffBase * Math.pow(2, Math.max(0, job.cycle - 1)), cfg.maxCycleBackoff);
     const jitter = Math.floor(Math.random() * 500);
     const wait = backoff + jitter;
-    appendJobLog(
-      jobId,
-      `Cycle ${job.cycle} done: ${job.done}/${job.total}. waiting ${wait}ms`
-    );
+    appendJobLog(jobId, `Cycle ${job.cycle} done: ${job.done}/${job.total}. waiting ${wait}ms`);
     await sleep(wait);
   }
 
   if (job.state !== "stopped" && job.state !== "error") {
-    job.state = Object.values(job.statusMap).every(
-      (s) => s.status === "success"
-    )
-      ? "finished"
-      : "completed";
+    job.state = Object.values(job.statusMap).every((s) => s.status === "success") ? "finished" : "completed";
   }
   job.finishedAt = new Date().toISOString();
-  appendJobLog(
-    jobId,
-    `Job ended state=${job.state} done=${job.done}/${job.total}`
-  );
+  appendJobLog(jobId, `Job ended state=${job.state} done=${job.done}/${job.total}`);
 }
 
 // HTTP endpoints
 app.post("/start", (req, res) => {
   try {
-    const {
-      startRoll,
-      endRoll,
-      semid = "4",
-      session = "Even-(2024-25)",
-      namesMap = null,
-      config = {},
-    } = req.body;
-    if (!startRoll || !endRoll)
-      return res.status(400).json({ error: "startRoll and endRoll required" });
+    const { startRoll, endRoll, semid = "4", session = "Even-(2024-25)", namesMap = null, config = {} } = req.body;
+    if (!startRoll || !endRoll) return res.status(400).json({ error: "startRoll and endRoll required" });
 
     const rolls = expandRange(startRoll, endRoll);
-    if (!rolls.length)
-      return res.status(400).json({ error: "no rolls expanded" });
+    if (!rolls.length) return res.status(400).json({ error: "no rolls expanded" });
 
     const jobId = uuidv4();
     const defaultCfg = {
@@ -411,18 +327,7 @@ app.post("/start", (req, res) => {
       universityDownThreshold: config.universityDownThreshold ?? 5,
     };
 
-    const statusMap = Object.fromEntries(
-      rolls.map((r) => [
-        r,
-        {
-          status: "pending",
-          attempts: 0,
-          lastErr: null,
-          nextAttemptAt: null,
-          student: null,
-        },
-      ])
-    );
+    const statusMap = Object.fromEntries(rolls.map((r) => [r, { status: "pending", attempts: 0, lastErr: null, nextAttemptAt: null, student: null }]));
 
     jobs[jobId] = {
       id: jobId,
@@ -447,13 +352,10 @@ app.post("/start", (req, res) => {
     };
 
     appendJobLog(jobId, `Queued job for ${rolls.length} rolls`);
-
+    
     // Start job with error handling
     startJob(jobId).catch((err) => {
-      appendJobLog(
-        jobId,
-        `startJob unexpected error: ${String(err?.message ?? err)}`
-      );
+      appendJobLog(jobId, `startJob unexpected error: ${String(err?.message ?? err)}`);
       console.error("startJob error", err);
       if (jobs[jobId]) {
         jobs[jobId].state = "error";
@@ -474,23 +376,15 @@ app.get("/status/:jobId", (req, res) => {
 
   const failed = Object.entries(job.statusMap)
     .filter(([r, v]) => v.status !== "success")
-    .map(([r, v]) => ({
-      roll: r,
-      status: v.status,
-      attempts: v.attempts,
-      lastErr: v.lastErr,
-      nextAttemptAt: v.nextAttemptAt,
-    }));
+    .map(([r, v]) => ({ roll: r, status: v.status, attempts: v.attempts, lastErr: v.lastErr, nextAttemptAt: v.nextAttemptAt }));
 
   const students = Object.values(job.statusMap)
     .filter((v) => v.student)
     .map((v) => v.student)
     .sort((a, b) => {
-      const ag = a.sgpa ?? -Infinity,
-        bg = b.sgpa ?? -Infinity;
+      const ag = a.sgpa ?? -Infinity, bg = b.sgpa ?? -Infinity;
       if (bg !== ag) return bg - ag;
-      const at = a.totalGradePoints ?? -Infinity,
-        bt = b.totalGradePoints ?? -Infinity;
+      const at = a.totalGradePoints ?? -Infinity, bt = b.totalGradePoints ?? -Infinity;
       if (bt !== at) return bt - at;
       return a.rollNo.localeCompare(b.rollNo);
     });
@@ -532,58 +426,25 @@ app.get("/student/:roll", async (req, res) => {
 
   try {
     const [sgpa, subs, det] = await Promise.all([
-      fetchWithTimeoutAndRetries(
-        `${BASE_SGPA}?rollNo=${encodeURIComponent(
-          roll
-        )}&semid=${encodeURIComponent(semid)}&session=${encodeURIComponent(
-          session
-        )}`,
-        { attempts: 3, timeoutMs: 15000 }
-      ),
-      fetchWithTimeoutAndRetries(
-        `${BASE_SUB}?semid=${encodeURIComponent(
-          semid
-        )}&rollNo=${encodeURIComponent(roll)}&session=${encodeURIComponent(
-          session
-        )}`,
-        { attempts: 3, timeoutMs: 15000 }
-      ),
-      fetchWithTimeoutAndRetries(
-        `${BASE_DET}?rollNo=${encodeURIComponent(roll)}`,
-        { attempts: 2, timeoutMs: 10000 }
-      ),
+      fetchWithTimeoutAndRetries(`${BASE_SGPA}?rollNo=${encodeURIComponent(roll)}&semid=${encodeURIComponent(semid)}&session=${encodeURIComponent(session)}`, { attempts: 3, timeoutMs: 15000 }),
+      fetchWithTimeoutAndRetries(`${BASE_SUB}?semid=${encodeURIComponent(semid)}&rollNo=${encodeURIComponent(roll)}&session=${encodeURIComponent(session)}`, { attempts: 3, timeoutMs: 15000 }),
+      fetchWithTimeoutAndRetries(`${BASE_DET}?rollNo=${encodeURIComponent(roll)}`, { attempts: 2, timeoutMs: 10000 }),
     ]);
     const student = normalizeStudent(roll, sgpa, subs, det, {});
     return res.json({ ok: true, student });
   } catch (err) {
-    appendGlobalLog(
-      `live lookup failed ${roll}: ${String(err?.message ?? err)}`
-    );
-    return res
-      .status(502)
-      .json({ ok: false, error: String(err?.message ?? err) });
+    appendGlobalLog(`live lookup failed ${roll}: ${String(err?.message ?? err)}`);
+    return res.status(502).json({ ok: false, error: String(err?.message ?? err) });
   }
 });
 
 app.get("/jobs", (req, res) => {
-  return res.json(
-    Object.values(jobs).map((j) => ({
-      jobId: j.id,
-      state: j.state,
-      total: j.total,
-      done: j.done,
-      createdAt: j.createdAt,
-    }))
-  );
+  return res.json(Object.values(jobs).map(j => ({ jobId: j.id, state: j.state, total: j.total, done: j.done, createdAt: j.createdAt })));
 });
 
 // Safety handlers
-process.on("unhandledRejection", (r) =>
-  appendGlobalLog("UnhandledRejection: " + String(r))
-);
-process.on("uncaughtException", (e) =>
-  appendGlobalLog("UncaughtException: " + (e.stack || e))
-);
+process.on("unhandledRejection", (r) => appendGlobalLog("UnhandledRejection: " + String(r)));
+process.on("uncaughtException", (e) => appendGlobalLog("UncaughtException: " + (e.stack || e)));
 
 const PORT = process.env.PORT || 4000;
 app.listen(PORT, () => {
